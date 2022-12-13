@@ -2,6 +2,7 @@ package main;
 
 
 import java.io.*;
+import java.nio.ByteBuffer;
 import java.security.DigestException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -55,7 +56,9 @@ class MyDedup{
         }
     }
     private static class Offset{
+        //container
         int container;
+        //offset from container start
         int offset;
 
         public Offset(int container, int offset) {
@@ -66,17 +69,48 @@ class MyDedup{
     //SHA1 -> ()
     private  static class FingerIndex implements Serializable{
         HashMap<FingerPrint,Offset> storage;
-         FingerIndex fromFile(String filename){return null;};
-         boolean exists(FingerPrint sha1){return false;};
-         boolean put(byte[] buff,int start,int end){return false;};
+         FingerIndex fromFile(String filename) throws IOException, ClassNotFoundException {
+             ObjectInputStream io=new ObjectInputStream(new FileInputStream(filename));
+             FingerIndex result= (FingerIndex) io.readObject();
+             io.close();
+             return result;
+         };
+         void toFile(String filename) throws IOException {
+             ObjectOutputStream io=new ObjectOutputStream(new FileOutputStream(filename));
+             io.writeObject(this);
+             io.close();
+         }
+
+        public FingerIndex() {
+            storage=new HashMap<>();
+        }
+        //get the fingerprint of the chunk. return null if the chunk does not exist
+        Offset get(FingerPrint sha1){
+             return storage.get(sha1);
+         };
+         Offset put(FingerPrint pf,Offset offset){
+             return storage.put(pf,offset);
+         };
     }
-    private static class ChunkFile{
+    private static class ChunkFile implements Serializable{
         //buffer
-        private boolean appendFile(){return true;};
+        private ByteBuffer bf_in;
+        private ByteBuffer bf_out;
+        //the final bit of each container
+        private ArrayList<Integer> containerEndLoc;
+        private BufferedInputStream in;
+        private BufferedOutputStream out;
+        //Put the chunk into the buffer. If buffer is full, flush it. return the container number
+        //and the offset from the start of the file
+        private Offset appendChunk(byte[] file,int offset,int len){return null;};
+        //Return the chunk at offset. Cache the container
+        private byte[] readChunk(Offset offset){
+            return null;
+        }
     }
-    private static class FileRecipe{
+    private static class FileRecipe implements Serializable{
         private ArrayList<Offset> chunks;
-        private String filePath;
+        private String filename;
     }
     private static byte[] readFileBytes(File f) throws IOException {
         int fileSize=(int)f.length();
@@ -94,8 +128,7 @@ class MyDedup{
         File f=new File(args[1]);
         byte[] fileBytes=readFileBytes(f);
         for(int i=0;i<fileBytes.length;i++){
-            //if an anchor is hit
-            //
+
         }
 
 
