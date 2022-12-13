@@ -66,7 +66,6 @@ class MyDedup{
             this.offset = offset;
         }
     };
-    //SHA1 -> ()
     private  static class FingerIndex implements Serializable{
         HashMap<FingerPrint,Offset> storage;
          FingerIndex fromFile(String filename) throws IOException, ClassNotFoundException {
@@ -107,10 +106,33 @@ class MyDedup{
         private byte[] readChunk(Offset offset){
             return null;
         }
+        ChunkFile fromFile(String filename) throws IOException, ClassNotFoundException {
+            ObjectInputStream io=new ObjectInputStream(new FileInputStream(filename));
+            ChunkFile result= (ChunkFile) io.readObject();
+            io.close();
+            return result;
+        };
+        void toFile(String filename) throws IOException {
+            ObjectOutputStream io=new ObjectOutputStream(new FileOutputStream(filename));
+            io.writeObject(this);
+            io.close();
+        }
     }
     private static class FileRecipe implements Serializable{
         private ArrayList<Offset> chunks;
         private String filename;
+        FileRecipe fromFile(String filename) throws IOException, ClassNotFoundException {
+            ObjectInputStream io=new ObjectInputStream(new FileInputStream(filename));
+            FileRecipe result= (FileRecipe) io.readObject();
+            io.close();
+            return result;
+        };
+        void toFile(String filename) throws IOException {
+            ObjectOutputStream io=new ObjectOutputStream(new FileOutputStream(filename));
+            io.writeObject(this);
+            io.close();
+        }
+
     }
     private static byte[] readFileBytes(File f) throws IOException {
         int fileSize=(int)f.length();
@@ -123,6 +145,7 @@ class MyDedup{
         }
         return buffer;
     }
+
 
     public  static void main(String[] args) throws IOException {
         File f=new File(args[1]);
