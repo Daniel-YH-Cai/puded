@@ -60,15 +60,17 @@ class MyDedup{
         int container;
         //offset from container start
         int offset;
+        int len;
 
-        public Offset(int container, int offset) {
+        public Offset(int container, int offset,int len) {
             this.container = container;
             this.offset = offset;
+            this.len=len;
         }
     };
     private  static class FingerIndex implements Serializable{
         HashMap<FingerPrint,Offset> storage;
-         FingerIndex fromFile(String filename) throws IOException, ClassNotFoundException {
+         private static FingerIndex fromFile(String filename) throws IOException, ClassNotFoundException {
              ObjectInputStream io=new ObjectInputStream(new FileInputStream(filename));
              FingerIndex result= (FingerIndex) io.readObject();
              io.close();
@@ -92,26 +94,33 @@ class MyDedup{
          };
     }
     private static class ChunkFile implements Serializable{
+        private static final String ChunkFileName="";
         //buffer
-        private ByteBuffer bf_in;
-        private ByteBuffer bf_out;
+        transient private ByteBuffer bf_in;
+        transient private ByteBuffer bf_out;
         //the final bit of each container
         private ArrayList<Integer> containerEndLoc;
-        private BufferedInputStream in;
-        private BufferedOutputStream out;
+        transient private BufferedInputStream in;
+        transient private BufferedOutputStream out;
         //Put the chunk into the buffer. If buffer is full, flush it. return the container number
         //and the offset from the start of the file
         private Offset appendChunk(byte[] file,int offset,int len){return null;};
         //Return the chunk at offset. Cache the container
         private byte[] readChunk(Offset offset){
-            return null;
+            return new byte[1];
         }
-        ChunkFile fromFile(String filename) throws IOException, ClassNotFoundException {
+        private static ChunkFile fromFile(String filename) throws IOException, ClassNotFoundException {
             ObjectInputStream io=new ObjectInputStream(new FileInputStream(filename));
             ChunkFile result= (ChunkFile) io.readObject();
             io.close();
             return result;
         };
+        public void initRead(){
+
+        }
+        public void initWrite(){
+
+        }
         void toFile(String filename) throws IOException {
             ObjectOutputStream io=new ObjectOutputStream(new FileOutputStream(filename));
             io.writeObject(this);
@@ -119,9 +128,10 @@ class MyDedup{
         }
     }
     private static class FileRecipe implements Serializable{
+        private int totalLength;
         private ArrayList<Offset> chunks;
         private String filename;
-        FileRecipe fromFile(String filename) throws IOException, ClassNotFoundException {
+        public static  FileRecipe fromFile(String filename) throws IOException, ClassNotFoundException {
             ObjectInputStream io=new ObjectInputStream(new FileInputStream(filename));
             FileRecipe result= (FileRecipe) io.readObject();
             io.close();
@@ -146,12 +156,31 @@ class MyDedup{
         return buffer;
     }
 
+    private static void download(String filename,String localFileName) throws IOException, ClassNotFoundException {
+        FileRecipe fileRecipe=FileRecipe.fromFile(filename);
+        ChunkFile chunkFile=ChunkFile.fromFile(ChunkFile.ChunkFileName);
+        chunkFile.initRead();
+        ByteArrayOutputStream bio=new ByteArrayOutputStream(fileRecipe.totalLength);
+        for(Offset offset:fileRecipe.chunks){
+            bio.write(chunkFile.readChunk(offset));
+        }
+        File outFile=new File(localFileName);
+        FileOutputStream fout=new FileOutputStream(outFile);
+        fout.write(bio.toByteArray());
+        bio.close();
+        fout.close();
+    }
+    public  static void main(String[] args) throws IOException, ClassNotFoundException {
+        if("upload".equals(args[1])){
 
-    public  static void main(String[] args) throws IOException {
-        File f=new File(args[1]);
-        byte[] fileBytes=readFileBytes(f);
-        for(int i=0;i<fileBytes.length;i++){
-
+        }
+        else if("download".equals(args[1])){
+            final String fileToDownload=args[2];
+            final String localFileName=args[3];
+            download(fileToDownload,localFileName);
+        }
+        else{
+            System.out.println("Usage: java MyDedup upload <min_chunk> <avg_chunk> <max_chunk> <d> <file_to_upload> or java MyDedup download <file_to_download> <local_file_name>");
         }
 
 
