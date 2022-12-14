@@ -14,13 +14,34 @@ import java.util.HashMap;
 class MyDedup{
     private static class MetaData implements Serializable{
         int numFile;
-        String fingerPrintIndexPath;
-        String chunkPath;
+        int totalBytes;
+        int totalChunks;
+        int dedupBytes;
+        int dedupChunks;
 
-        public MetaData(int numFile, String fingerPrintIndexPath, String chunkPath) {
+        private final static String fingerPrintIndexPath="/data/mydedup.index";
+
+        public MetaData(int numFile, int totalBytes, int totalChunks, int dedupBytes, int dedupChunks) {
             this.numFile = numFile;
-            this.fingerPrintIndexPath = fingerPrintIndexPath;
-            this.chunkPath = chunkPath;
+            this.totalBytes = totalBytes;
+            this.totalChunks = totalChunks;
+            this.dedupBytes = dedupBytes;
+            this.dedupChunks = dedupChunks;
+        }
+
+        public static MetaData emptyMetaData() {
+            return new MetaData(0,0,0,0,0);
+        }
+        public static MetaData fromFile() throws IOException, ClassNotFoundException {
+            ObjectInputStream io=new ObjectInputStream(new FileInputStream(fingerPrintIndexPath));
+            MetaData result= (MetaData) io.readObject();
+            io.close();
+            return result;
+        };
+        void toFile() throws IOException {
+            ObjectOutputStream io=new ObjectOutputStream(new FileOutputStream(fingerPrintIndexPath));
+            io.writeObject(this);
+            io.close();
         }
     }
     //SHA1 fingerprint class: can generate fingerprint with static method
@@ -94,7 +115,7 @@ class MyDedup{
          };
     }
     private static class ChunkFile implements Serializable{
-        private static final String ChunkFileName="";
+        private static final String ChunkFileName="/data/storage.bin";
         //buffer
         transient private ByteBuffer bf_in;
         transient private ByteBuffer bf_out;
