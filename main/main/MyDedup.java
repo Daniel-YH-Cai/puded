@@ -3,6 +3,7 @@ package main;
 
 import java.io.*;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.security.DigestException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -18,7 +19,6 @@ import java.util.HashMap;
  download input/number.txt output/number.txt
  upload 4 8 8 10 input/number2.txt
  download input/number2.txt output/number2.txt
-
  test large:
  KJV12.TXT: 4.7 mb
  KJV12-2.TXT: 2.4 mb
@@ -71,7 +71,6 @@ class MyDedup{
             io.writeObject(this);
             io.close();
         }
-
          */
     }
     //SHA1 fingerprint class: can generate fingerprint with static method
@@ -130,17 +129,17 @@ class MyDedup{
         private static final long serialVersionUID=1241241;
         private final static String fingerPrintIndexPath="./data/mydedup.index";
         //public final static String fingerPrintIndexPath="./data/fingerprint.index";
-         private static FingerIndex fromFile() throws IOException, ClassNotFoundException {
-             ObjectInputStream io=new ObjectInputStream(new FileInputStream(fingerPrintIndexPath));
-             FingerIndex result= (FingerIndex) io.readObject();
-             io.close();
-             return result;
-         }
-         void toFile() throws IOException {
-             ObjectOutputStream io=new ObjectOutputStream(new FileOutputStream(fingerPrintIndexPath));
-             io.writeObject(this);
-             io.close();
-         }
+        private static FingerIndex fromFile() throws IOException, ClassNotFoundException {
+            ObjectInputStream io=new ObjectInputStream(new FileInputStream(fingerPrintIndexPath));
+            FingerIndex result= (FingerIndex) io.readObject();
+            io.close();
+            return result;
+        }
+        void toFile() throws IOException {
+            ObjectOutputStream io=new ObjectOutputStream(new FileOutputStream(fingerPrintIndexPath));
+            io.writeObject(this);
+            io.close();
+        }
 
         public FingerIndex() {
              metaData = MetaData.emptyMetaData();
@@ -161,7 +160,7 @@ class MyDedup{
         private static final long serialVersionUID=4335352;
         private static final String ChunkFileName="data/storage.bin";
         private static final String ContainerName="data/container.index";
-        private static final int containerSize = 1048576; // 1 MiB = 2^20 bytes
+        private static final int containerSize = 16 ; //1048576; // 1 MiB = 2^20 bytes
         //buffer
         transient private ByteBuffer bf_in;
         transient private ByteBuffer bf_out;
@@ -169,9 +168,11 @@ class MyDedup{
         private ArrayList<Integer> containerEndLoc; // real container_num = containerEndLoc.size() - 1 (save an extra container 0)
         transient private BufferedInputStream in;
         transient private BufferedOutputStream out;
-        transient private FileInputStream fis;
+        transient private RandomAccessFile fis;
         transient private FileOutputStream fos;
         transient private byte[] byte_in;
+        transient private int current_container;
+        FileChannel channel;
         public ChunkFile(){
             containerEndLoc = new ArrayList<Integer>();
             containerEndLoc.add(0);
@@ -209,17 +210,26 @@ class MyDedup{
         }
         //Return the chunk at offset. Cache the container
         private byte[] readChunk(Offset offset, int file_len) throws IOException{
-            bf_in = ByteBuffer.allocate(4000);
-            int storage_offset = containerEndLoc.get(offset.container - 1) + offset.offset;
-            byte[] chunk = new byte[1024*1024*10]; // should be total num of bytes in storage
-            //in.skip(storage_offset);
-            in.read(chunk,storage_offset, offset.len);
-            ByteBuffer temp = ByteBuffer.wrap(chunk, storage_offset, offset.len);
-            bf_in.put(temp);
-            bf_in.flip();
-            byte[] byte_in = new byte[bf_in.limit()];
-            bf_in.get(byte_in);
-            return byte_in;
+            byte[] chunk_byte = new byte[offset.len];
+            // check if chunk is in the current container
+            if(current_container != offset.container) { // load the container of the chunk to buffer
+                int container_start = containerEndLoc.get(offset.container - 1);
+                int container_end = containerEndLoc.get(offset.container) - 1;
+                int container_size = container_end - container_start + 1;
+                bf_in.clear();
+                bf_in.limit(container_size);
+                channel.position(container_start);
+                channel.read(bf_in);
+
+                current_container = offset.container;
+            }
+            //read from current container
+            bf_in.limit(offset.offset + offset.len);
+            bf_in.position(offset.offset);
+
+            bf_in.get(chunk_byte);
+
+            return chunk_byte;
         }
         private static ChunkFile fromFile(String filename) throws IOException, ClassNotFoundException {
             ObjectInputStream io=new ObjectInputStream(new FileInputStream(filename));
@@ -228,8 +238,10 @@ class MyDedup{
             return result;
         };
         public void initRead(String filename, int file_len) throws IOException{
-            fis = new FileInputStream(filename);
-            in = new BufferedInputStream(fis);
+            fis = new RandomAccessFile(ChunkFileName, "r");
+            bf_in = ByteBuffer.allocate(containerSize); // 1 mb, load container
+            current_container = 0;
+            channel = fis.getChannel();
 
         }
         public void initWrite() throws FileNotFoundException{
@@ -239,7 +251,7 @@ class MyDedup{
             //end write close?
         }
         public void endRead() throws IOException{
-            in.close();
+            //in.close();
             fis.close();
         }
         public void endWrite() throws IOException{
@@ -321,9 +333,12 @@ class MyDedup{
         FingerIndex f_index = new FingerIndex();
         FileRecipe file_recipe = new FileRecipe();
         ChunkFile container_index = new ChunkFile();
+
         if (finger_index_file.exists()){
             f_index = FingerIndex.fromFile();
         }else{
+            File data_dir = new File("data/");
+            data_dir.mkdir();
             finger_index_file.createNewFile();
         }
         file_recipe_file.createNewFile();
