@@ -414,6 +414,10 @@ class MyDedup{
             }
             file_recipe.chunks.add(chunk_offset);
         }
+        // end of file, flush the container
+        if(container_index.bf_out.position() > 0){
+            container_index.writeContainer();
+        }
         f_index.metaData.numFile += 1;
         f_index.metaData.dedupChunks += newDedupChunks;
         f_index.metaData.totalChunks += newChunks;
