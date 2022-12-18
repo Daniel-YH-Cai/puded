@@ -160,7 +160,7 @@ class MyDedup{
         private static final long serialVersionUID=4335352;
         private static final String ChunkFileName="data/storage.bin";
         private static final String ContainerName="data/container.index";
-        private static final int containerSize = 16 ; //1048576; // 1 MiB = 2^20 bytes
+        private static final int containerSize =  1048576; // 1 MiB = 2^20 bytes
         //buffer
         transient private ByteBuffer bf_in;
         transient private ByteBuffer bf_out;
