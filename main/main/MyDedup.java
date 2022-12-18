@@ -39,7 +39,8 @@ class MyDedup{
     static int D = 0;
     static String fileToUpload = null;
     static int[] base_pow = null;
-    private static class MetaData implements Serializable{
+    private static class MetaData{
+
         int numFile;
         int totalBytes;
         int totalChunks;
@@ -74,7 +75,7 @@ class MyDedup{
          */
     }
     //SHA1 fingerprint class: can generate fingerprint with static method
-    private static class FingerPrint implements Serializable{
+    private static class FingerPrint  {
         byte[] sha1;
         static final private MessageDigest md;
 
@@ -106,7 +107,7 @@ class MyDedup{
             return Arrays.hashCode(sha1);
         }
     }
-    private static class Offset implements Serializable{
+    private static class Offset {
         //container
         int container;
         //offset from container start
@@ -123,6 +124,8 @@ class MyDedup{
     private  static class FingerIndex implements Serializable{
         MetaData metaData ;
         HashMap<FingerPrint,Offset> storage;
+
+        private static final long serialVersionUID=1241241;
         private final static String fingerPrintIndexPath="./data/mydedup.index";
         //public final static String fingerPrintIndexPath="./data/fingerprint.index";
          private static FingerIndex fromFile() throws IOException, ClassNotFoundException {
@@ -153,6 +156,7 @@ class MyDedup{
          };
     }
     private static class ChunkFile implements Serializable{
+        private static final long serialVersionUID=4335352;
         private static final String ChunkFileName="data/storage.bin";
         private static final String ContainerName="data/container.index";
         private static final int containerSize = 1048576; // 1 MiB = 2^20 bytes
@@ -247,12 +251,14 @@ class MyDedup{
         }
     }
     private static class FileRecipe implements Serializable{
+        private static final long serialVersionUID=38192063;
         private int totalLength;
         private ArrayList<Offset> chunks;
         private String filename;
         public FileRecipe(){
             chunks = new ArrayList<Offset>();
         }
+
         public static  FileRecipe fromFile(String filename) throws IOException, ClassNotFoundException {
             ObjectInputStream io=new ObjectInputStream(new FileInputStream(filename));
             FileRecipe result= (FileRecipe) io.readObject();
