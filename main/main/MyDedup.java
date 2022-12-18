@@ -39,8 +39,8 @@ class MyDedup{
     static int D = 0;
     static String fileToUpload = null;
     static int[] base_pow = null;
-    private static class MetaData{
-
+    private static class MetaData implements Serializable{
+        private static final long serialVersionUID=3463463463L;
         int numFile;
         int totalBytes;
         int totalChunks;
@@ -75,9 +75,10 @@ class MyDedup{
          */
     }
     //SHA1 fingerprint class: can generate fingerprint with static method
-    private static class FingerPrint  {
+    private static class FingerPrint implements Serializable {
         byte[] sha1;
         static final private MessageDigest md;
+        private static final long serialVersionUID=36829907L;
 
         public FingerPrint(byte[] sha1) {
             this.sha1 = sha1;
@@ -107,7 +108,8 @@ class MyDedup{
             return Arrays.hashCode(sha1);
         }
     }
-    private static class Offset {
+    private static class Offset implements Serializable {
+        private static final long serialVersionUID=1125884L;
         //container
         int container;
         //offset from container start
