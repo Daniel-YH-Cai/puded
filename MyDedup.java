@@ -1,10 +1,9 @@
-package main;
+
 
 
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.security.DigestException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -26,11 +25,13 @@ import java.util.HashMap;
  download input/KJV12.TXT output/KJV12.txt
  upload 32 1024 2048 13 input/KJV12-2.TXT
  download input/KJV12-2.TXT output/KJV12-2.txt
+ upload 32 1024 2048 13 input/histories.txt
+ upload 32 1024 2048 13 input/histories-shift.txt
+ download input/KJV12-2.TXT output/KJV12-2.txt
 */
 // create data/ manually! create directories
-
-
 //Test file: D:\Desktop\CSCI4180\asg\asg1
+//Test
 class MyDedup{
 
     static int min_chunk = 0;
@@ -206,7 +207,7 @@ class MyDedup{
             return chunk_offset;
         }
         //Return the chunk at offset. Cache the container
-        private byte[] readChunk(Offset offset, int file_len) throws IOException{
+        private byte[] readChunk(Offset offset) throws IOException{
             byte[] chunk_byte = new byte[offset.len];
             // check if chunk is in the current container
             if(current_container != offset.container) { // load the container of the chunk to buffer
@@ -451,7 +452,7 @@ class MyDedup{
         chunkFile.initRead(file_recipe_path, fileRecipe.totalLength);
         ByteArrayOutputStream bio=new ByteArrayOutputStream(fileRecipe.totalLength);
         for(Offset offset:fileRecipe.chunks){
-            bio.write(chunkFile.readChunk(offset, fileRecipe.totalLength));
+            bio.write(chunkFile.readChunk(offset));
         }
         chunkFile.endRead();
         File outFile=new File(localFileName);
