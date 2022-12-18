@@ -21,12 +21,12 @@ import java.util.HashMap;
  test large:
  KJV12.TXT: 4.7 mb
  KJV12-2.TXT: 2.4 mb
- upload 32 1024 2048 13 input/KJV12.TXT
+ upload 32 512 1024 257 input/KJV12.TXT
  download input/KJV12.TXT output/KJV12.txt
  upload 32 1024 2048 13 input/KJV12-2.TXT
  download input/KJV12-2.TXT output/KJV12-2.txt
- upload 32 1024 2048 13 input/histories.txt
- upload 32 1024 2048 13 input/histories-shift.txt
+ upload 32 512 1024 257 input/histories.txt
+ upload 32 512 1024 257 input/histories-shift.txt
  download input/KJV12-2.TXT output/KJV12-2.txt
 */
 // create data/ manually! create directories
@@ -322,7 +322,12 @@ class MyDedup{
         return rf;
     }
 
-
+    public static String toDataStoragePath(String input){
+        if(input.substring(0,1).equals("./")){
+            return input.substring(2).replace('/','-');
+        }
+        return input.replace('/','-');
+    }
     private static void upload() throws IOException, ClassNotFoundException{
         // load fingerprint index and metadata
         // create file recipe
