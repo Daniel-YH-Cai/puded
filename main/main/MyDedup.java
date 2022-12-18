@@ -13,11 +13,19 @@ import java.util.HashMap;
 //"/data/mydedup.index"
 
 /*
- test:
+ test small:
  upload 4 8 8 10 input/number.txt
  download input/number.txt output/number.txt
  upload 4 8 8 10 input/number2.txt
  download input/number2.txt output/number2.txt
+
+ test large:
+ KJV12.TXT: 4.7 mb
+ KJV12-2.TXT: 2.4 mb
+ upload 32 1024 2048 13 input/KJV12.TXT
+ download input/KJV12.TXT output/KJV12.txt
+ upload 32 1024 2048 13 input/KJV12-2.TXT
+ download input/KJV12-2.TXT output/KJV12-2.txt
 */
 // create data/ manually! create directories
 
@@ -197,7 +205,7 @@ class MyDedup{
         private byte[] readChunk(Offset offset, int file_len) throws IOException{
             bf_in = ByteBuffer.allocate(4000);
             int storage_offset = containerEndLoc.get(offset.container - 1) + offset.offset;
-            byte[] chunk = new byte[40];
+            byte[] chunk = new byte[1024*1024*10]; // should be total num of bytes in storage
             //in.skip(storage_offset);
             in.read(chunk,storage_offset, offset.len);
             ByteBuffer temp = ByteBuffer.wrap(chunk, storage_offset, offset.len);
