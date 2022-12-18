@@ -172,7 +172,8 @@ class MyDedup{
         transient private FileOutputStream fos;
         transient private byte[] byte_in;
         transient private int current_container;
-        FileChannel channel;
+        transient private FileChannel rChannel;
+        transient private FileChannel wChannel;
         public ChunkFile(){
             containerEndLoc = new ArrayList<Integer>();
             containerEndLoc.add(0);
@@ -180,11 +181,7 @@ class MyDedup{
         // flush buffer, update containerEndLoc
         private void writeContainer() throws IOException{
             bf_out.flip();
-            byte[] byte_out = new byte[bf_out.limit()];
-            bf_out.get(byte_out);
-
-            out.write(byte_out);
-            out.flush();
+            wChannel.write(bf_out);
 
             int prev_loc = containerEndLoc.get(containerEndLoc.size() - 1);
             containerEndLoc.add(bf_out.limit() + prev_loc);
@@ -218,8 +215,8 @@ class MyDedup{
                 int container_size = container_end - container_start + 1;
                 bf_in.clear();
                 bf_in.limit(container_size);
-                channel.position(container_start);
-                channel.read(bf_in);
+                rChannel.position(container_start);
+                rChannel.read(bf_in);
 
                 current_container = offset.container;
             }
@@ -241,13 +238,16 @@ class MyDedup{
             fis = new RandomAccessFile(ChunkFileName, "r");
             bf_in = ByteBuffer.allocate(containerSize); // 1 mb, load container
             current_container = 0;
-            channel = fis.getChannel();
+            rChannel = fis.getChannel();
 
         }
         public void initWrite() throws FileNotFoundException{
+            //fos = new RandomAccessFile(ChunkFileName, "r");
+
             fos = new FileOutputStream(ChunkFileName, true);
-            out = new BufferedOutputStream(fos);
+            //out = new BufferedOutputStream(fos);
             bf_out = ByteBuffer.allocate(containerSize);
+            wChannel = fos.getChannel();
             //end write close?
         }
         public void endRead() throws IOException{
@@ -255,7 +255,7 @@ class MyDedup{
             fis.close();
         }
         public void endWrite() throws IOException{
-            out.close();
+            //out.close();
             fos.close();
         }
         void toFile(String filename) throws IOException {
@@ -375,30 +375,16 @@ class MyDedup{
             rf_prev = rf;
             if((rf & (avg_chunk - 1)) == 0 || i - start + min_chunk == max_chunk) {
 
-                /*
-                System.out.println("\ni: " + i);
-                System.out.println("byte[i]: " + file_bytes[i]);
-                System.out.println("byte[i] in binary: " + Integer.toBinaryString(file_bytes[i]));
-                System.out.println("rf: " + rf);
-                System.out.println("rf in binary: " + Integer.toBinaryString(rf));
-                System.out.println("avg_chunk in binary: " + Integer.toBinaryString(avg_chunk - 1));
-                System.out.println("binary: " + Integer.toBinaryString(file_bytes[i] & (avg_chunk - 1)));
-                 */
-
                 // add anchor after the slide window, create chunk from bytes[start] to bytes[end] inclusive
 
                 end = i + min_chunk-1;
-                String output = new String(file_bytes, start, end - start + 1);
                 FingerPrint chunk_fingerprint = FingerPrint.SHA1(file_bytes, start, end - start + 1);
                 newDedupChunks++;
                 newDedupBytes += end - start + 1;
-                //System.out.println("output chunk: " + output);
-                //System.out.println("SHA1: " + chunk_fingerprint.sha1);
 
                 Offset chunk_offset;
                 if(f_index.containsKey(chunk_fingerprint) ){
                     chunk_offset = f_index.get(chunk_fingerprint);
-                    //System.out.println("found! offset is: "+chunk_offset.offset+"  length is: "+chunk_offset.len);
                 }else{
                     newChunks++;
                     newBytes+= end - start + 1;
@@ -413,16 +399,13 @@ class MyDedup{
             }
         }
         if(start <= file_bytes.length - 1){ // create a chunk for the tail of the file
-            String output = new String(file_bytes, start, file_bytes.length - start);
-            //System.out.println("output chunk: " + output);
             FingerPrint chunk_fingerprint = FingerPrint.SHA1(file_bytes, start, file_bytes.length - start);
-            //System.out.println("SHA1: " + chunk_fingerprint.sha1);
+
             newDedupChunks++;
             newDedupBytes += file_bytes.length - start;
             Offset chunk_offset;
             if(f_index.containsKey(chunk_fingerprint) ){
                 chunk_offset = f_index.get(chunk_fingerprint);
-                //System.out.println("found! offset is: "+chunk_offset.offset+"  length is: "+chunk_offset.len);
             }else{
                 newChunks++;
                 newBytes += file_bytes.length - start;
