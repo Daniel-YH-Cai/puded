@@ -442,11 +442,11 @@ class MyDedup{
     }
 
     private static void download(String filename,String localFileName) throws IOException, ClassNotFoundException {
-        String file_recipe_path = new String("data/"+filename.replace('/','-'));// create directory?
+        String file_recipe_path = "data/"+filename.replace('/','-');// create directory?
 
         FileRecipe fileRecipe=FileRecipe.fromFile(file_recipe_path);
         ChunkFile chunkFile=ChunkFile.fromFile(ChunkFile.ContainerName);
-        chunkFile.initRead(filename, fileRecipe.totalLength);
+        chunkFile.initRead(file_recipe_path, fileRecipe.totalLength);
         ByteArrayOutputStream bio=new ByteArrayOutputStream(fileRecipe.totalLength);
         for(Offset offset:fileRecipe.chunks){
             bio.write(chunkFile.readChunk(offset, fileRecipe.totalLength));
