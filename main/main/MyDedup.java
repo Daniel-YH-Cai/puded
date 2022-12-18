@@ -19,7 +19,7 @@ import java.util.HashMap;
  upload 4 8 8 10 input/number2.txt
  download input/number2.txt output/number2.txt
 */
-
+// create data/ manually! create directories
 
 
 //Test file: D:\Desktop\CSCI4180\asg\asg1
@@ -37,22 +37,21 @@ class MyDedup{
         int totalChunks;
         int dedupBytes;
         int dedupChunks;
-        // num of container? dedup ratio?
+        int numContainers;
 
-        private final static String fingerPrintIndexPath="./data/mydedup.index";
-
-        public MetaData(int numFile, int totalBytes, int totalChunks, int dedupBytes, int dedupChunks) {
+        public MetaData(int numFile, int totalBytes, int totalChunks, int dedupBytes, int dedupChunks, int numContainers) {
             this.numFile = numFile;
             this.totalBytes = totalBytes;
             this.totalChunks = totalChunks;
             this.dedupBytes = dedupBytes;
             this.dedupChunks = dedupChunks;
+            this.numContainers = numContainers;
         }
 
         public static MetaData emptyMetaData() {
-            return new MetaData(0,0,0,0,0);
+            return new MetaData(0,0,0,0,0,0);
         }
-        public static MetaData fromFile() throws IOException, ClassNotFoundException {
+        /*public static MetaData fromFile() throws IOException, ClassNotFoundException {
             ObjectInputStream io=new ObjectInputStream(new FileInputStream(fingerPrintIndexPath));
             MetaData result= (MetaData) io.readObject();
             io.close();
@@ -63,6 +62,8 @@ class MyDedup{
             io.writeObject(this);
             io.close();
         }
+
+         */
     }
     //SHA1 fingerprint class: can generate fingerprint with static method
     private static class FingerPrint implements Serializable{
@@ -112,8 +113,10 @@ class MyDedup{
 
     }
     private  static class FingerIndex implements Serializable{
+        MetaData metaData ;
         HashMap<FingerPrint,Offset> storage;
-        transient public final static String fingerPrintIndexPath="./data/fingerprint.index";
+        private final static String fingerPrintIndexPath="./data/mydedup.index";
+        //public final static String fingerPrintIndexPath="./data/fingerprint.index";
          private static FingerIndex fromFile() throws IOException, ClassNotFoundException {
              ObjectInputStream io=new ObjectInputStream(new FileInputStream(fingerPrintIndexPath));
              FingerIndex result= (FingerIndex) io.readObject();
@@ -127,7 +130,8 @@ class MyDedup{
          }
 
         public FingerIndex() {
-            storage=new HashMap<>();
+             metaData = MetaData.emptyMetaData();
+             storage=new HashMap<>();
         }
         //get the fingerprint of the chunk. return null if the chunk does not exist
         Offset get(FingerPrint sha1){
@@ -289,8 +293,11 @@ class MyDedup{
         return rf;
     }
 
+
     private static void upload() throws IOException, ClassNotFoundException{
-        // load fingerprint index
+        // load fingerprint index and metadata
+        // create file recipe
+        // load container index
         File finger_index_file = new File(FingerIndex.fingerPrintIndexPath);
         File container_index_file = new File(ChunkFile.ContainerName);
         String file_recipe_path = new String("data/"+fileToUpload.replace('/','-'));// create directory?
@@ -319,6 +326,12 @@ class MyDedup{
         file_recipe.filename = fileToUpload;
         file_recipe.totalLength = file_bytes.length;
 
+        //record metadata
+        int newBytes = 0;
+        int newChunks = 0;
+        int newDedupBytes = 0;
+        int newDedupChunks = 0;
+
         // start RFP: window_size = min_chunk; modulus q = avg_chunk; base = D
         int start = 0;
         int end;
@@ -329,7 +342,6 @@ class MyDedup{
 
             rf = rabinFingerprint(file_bytes, i, rf_prev);
             rf_prev = rf;
-            System.out.println("analyzing i= "+i);
             if((rf & (avg_chunk - 1)) == 0 || i - start + min_chunk == max_chunk) {
 
                 /*
@@ -343,11 +355,13 @@ class MyDedup{
 
                  */
 
-
                 // add anchor after the slide window, create chunk from bytes[start] to bytes[end] inclusive
+
                 end = i + min_chunk-1;
                 String output = new String(file_bytes, start, end - start + 1);
                 FingerPrint chunk_fingerprint = FingerPrint.SHA1(file_bytes, start, end - start + 1);
+                newDedupChunks++;
+                newDedupBytes += end - start + 1;
                 //System.out.println("output chunk: " + output);
                 //System.out.println("SHA1: " + chunk_fingerprint.sha1);
 
@@ -356,6 +370,8 @@ class MyDedup{
                     chunk_offset = f_index.get(chunk_fingerprint);
                     //System.out.println("found! offset is: "+chunk_offset.offset+"  length is: "+chunk_offset.len);
                 }else{
+                    newChunks++;
+                    newBytes+= end - start + 1;
                     chunk_offset = container_index.appendChunk(file_bytes, start, end - start + 1);
                     f_index.put(chunk_fingerprint,chunk_offset);
                 }
@@ -371,21 +387,43 @@ class MyDedup{
             //System.out.println("output chunk: " + output);
             FingerPrint chunk_fingerprint = FingerPrint.SHA1(file_bytes, start, file_bytes.length - start);
             //System.out.println("SHA1: " + chunk_fingerprint.sha1);
-
+            newDedupChunks++;
+            newDedupBytes += file_bytes.length - start;
             Offset chunk_offset;
             if(f_index.containsKey(chunk_fingerprint) ){
                 chunk_offset = f_index.get(chunk_fingerprint);
                 //System.out.println("found! offset is: "+chunk_offset.offset+"  length is: "+chunk_offset.len);
             }else{
+                newChunks++;
+                newBytes += file_bytes.length - start;
                 chunk_offset = container_index.appendChunk(file_bytes, start, file_bytes.length - start);
                 f_index.put(chunk_fingerprint, chunk_offset);
             }
             file_recipe.chunks.add(chunk_offset);
         }
+        f_index.metaData.numFile += 1;
+        f_index.metaData.dedupChunks += newDedupChunks;
+        f_index.metaData.totalChunks += newChunks;
+        f_index.metaData.dedupBytes += newDedupBytes;
+        f_index.metaData.totalBytes += newBytes;
+        f_index.metaData.numContainers = container_index.containerEndLoc.size()-1;
+        double ratio = (double)f_index.metaData.dedupBytes / (double)f_index.metaData.totalBytes;
+
         container_index.endWrite();
         f_index.toFile();
         file_recipe.toFile(file_recipe_path);
         container_index.toFile(ChunkFile.ContainerName);
+
+
+        System.out.format(
+                "Total number of files that have been stored: " +f_index.metaData.numFile+
+                        "\nTotal number of pre-deduplicated chunks in storage: " +f_index.metaData.dedupChunks+
+                        "\nTotal number of unique chunks in storage: " +f_index.metaData.totalChunks+
+                        "\nTotal number of bytes of pre-deduplicated chunks in storage: " +f_index.metaData.dedupBytes+
+                        "\nTotal number of bytes of unique chunks in storage: " +f_index.metaData.totalBytes+
+                        "\nTotal number of containers in storage: " +f_index.metaData.numContainers+
+                        "\nDeduplication ratio: %.2f", ratio
+        );
     }
 
     private static void download(String filename,String localFileName) throws IOException, ClassNotFoundException {
