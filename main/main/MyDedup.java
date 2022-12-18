@@ -352,7 +352,6 @@ class MyDedup{
                 System.out.println("rf in binary: " + Integer.toBinaryString(rf));
                 System.out.println("avg_chunk in binary: " + Integer.toBinaryString(avg_chunk - 1));
                 System.out.println("binary: " + Integer.toBinaryString(file_bytes[i] & (avg_chunk - 1)));
-
                  */
 
                 // add anchor after the slide window, create chunk from bytes[start] to bytes[end] inclusive
