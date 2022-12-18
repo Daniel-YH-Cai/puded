@@ -253,15 +253,6 @@ class MyDedup{
             io.close();
         }
 
-        public void setTotalLength(int totalLength) {
-            this.totalLength = totalLength;
-        }
-        public ArrayList<Offset> getChunks() {
-            return this.chunks;
-        }
-        public void setFilename(String filename) {
-            this.filename = filename;
-        }
     }
     private static byte[] readFileBytes(File f) throws IOException {
         int fileSize=(int)f.length();
@@ -325,8 +316,8 @@ class MyDedup{
         File inFile = new File(fileToUpload);
         byte[] file_bytes = readFileBytes(inFile);
 
-        file_recipe.setFilename(fileToUpload);
-        file_recipe.setTotalLength(file_bytes.length);
+        file_recipe.filename = fileToUpload;
+        file_recipe.totalLength = file_bytes.length;
 
         // start RFP: window_size = min_chunk; modulus q = avg_chunk; base = D
         int start = 0;
@@ -341,6 +332,7 @@ class MyDedup{
             System.out.println("analyzing i= "+i);
             if((rf & (avg_chunk - 1)) == 0 || i - start + min_chunk == max_chunk) {
 
+                /*
                 System.out.println("\ni: " + i);
                 System.out.println("byte[i]: " + file_bytes[i]);
                 System.out.println("byte[i] in binary: " + Integer.toBinaryString(file_bytes[i]));
@@ -349,23 +341,25 @@ class MyDedup{
                 System.out.println("avg_chunk in binary: " + Integer.toBinaryString(avg_chunk - 1));
                 System.out.println("binary: " + Integer.toBinaryString(file_bytes[i] & (avg_chunk - 1)));
 
+                 */
+
 
                 // add anchor after the slide window, create chunk from bytes[start] to bytes[end] inclusive
                 end = i + min_chunk-1;
                 String output = new String(file_bytes, start, end - start + 1);
                 FingerPrint chunk_fingerprint = FingerPrint.SHA1(file_bytes, start, end - start + 1);
-                System.out.println("output chunk: " + output);
-                System.out.println("SHA1: " + chunk_fingerprint.sha1);
+                //System.out.println("output chunk: " + output);
+                //System.out.println("SHA1: " + chunk_fingerprint.sha1);
 
                 Offset chunk_offset;
                 if(f_index.containsKey(chunk_fingerprint) ){
                     chunk_offset = f_index.get(chunk_fingerprint);
-                    System.out.println("found! offset is: "+chunk_offset.offset+"  length is: "+chunk_offset.len);
+                    //System.out.println("found! offset is: "+chunk_offset.offset+"  length is: "+chunk_offset.len);
                 }else{
                     chunk_offset = container_index.appendChunk(file_bytes, start, end - start + 1);
                     f_index.put(chunk_fingerprint,chunk_offset);
                 }
-                file_recipe.getChunks().add(chunk_offset);
+                file_recipe.chunks.add(chunk_offset);
 
                 start = end + 1;
                 i = end;
@@ -374,19 +368,19 @@ class MyDedup{
         }
         if(start <= file_bytes.length - 1){ // create a chunk for the tail of the file
             String output = new String(file_bytes, start, file_bytes.length - start);
-            System.out.println("output chunk: " + output);
+            //System.out.println("output chunk: " + output);
             FingerPrint chunk_fingerprint = FingerPrint.SHA1(file_bytes, start, file_bytes.length - start);
-            System.out.println("SHA1: " + chunk_fingerprint.sha1);
+            //System.out.println("SHA1: " + chunk_fingerprint.sha1);
 
             Offset chunk_offset;
             if(f_index.containsKey(chunk_fingerprint) ){
                 chunk_offset = f_index.get(chunk_fingerprint);
-                System.out.println("found! offset is: "+chunk_offset.offset+"  length is: "+chunk_offset.len);
+                //System.out.println("found! offset is: "+chunk_offset.offset+"  length is: "+chunk_offset.len);
             }else{
                 chunk_offset = container_index.appendChunk(file_bytes, start, file_bytes.length - start);
                 f_index.put(chunk_fingerprint, chunk_offset);
             }
-            file_recipe.getChunks().add(chunk_offset);
+            file_recipe.chunks.add(chunk_offset);
         }
         container_index.endWrite();
         f_index.toFile();
