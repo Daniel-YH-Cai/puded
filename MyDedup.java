@@ -439,13 +439,14 @@ class MyDedup{
 
 
         System.out.format(
-                "Total number of files that have been stored: " +f_index.metaData.numFile+
+                "Report Output:"+
+                "\nTotal number of files that have been stored: " +f_index.metaData.numFile+
                         "\nTotal number of pre-deduplicated chunks in storage: " +f_index.metaData.dedupChunks+
                         "\nTotal number of unique chunks in storage: " +f_index.metaData.totalChunks+
                         "\nTotal number of bytes of pre-deduplicated chunks in storage: " +f_index.metaData.dedupBytes+
                         "\nTotal number of bytes of unique chunks in storage: " +f_index.metaData.totalBytes+
                         "\nTotal number of containers in storage: " +f_index.metaData.numContainers+
-                        "\nDeduplication ratio: %.2f", ratio
+                        "\nDeduplication ratio: %.2f\n", ratio
         );
     }
 
