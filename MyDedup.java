@@ -462,6 +462,10 @@ class MyDedup{
         }
         chunkFile.endRead();
         File outFile=new File(localFileName);
+        File parent=outFile.getParentFile();
+        if(parent!=null){
+            parent.mkdirs();
+        }
         FileOutputStream fout=new FileOutputStream(outFile);
         fout.write(bio.toByteArray());
         bio.close();
